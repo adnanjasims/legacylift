@@ -5,6 +5,15 @@ import { defineConfig, type Plugin } from "vite";
 
 import { healthPayload } from "./src/health.ts";
 
+const gateway = process.env.GATEWAY_URL ?? "http://127.0.0.1:3000";
+
+const apiProxy = {
+  "/api": {
+    target: gateway,
+    rewrite: (path: string) => path.replace(/^\/api/, ""),
+  },
+};
+
 function isHealthPath(url: string | undefined): boolean {
   if (url === undefined) {
     return false;
@@ -41,4 +50,12 @@ function healthPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [healthPlugin(), react()],
+  server: {
+    proxy: apiProxy,
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 5173,
+    proxy: apiProxy,
+  },
 });

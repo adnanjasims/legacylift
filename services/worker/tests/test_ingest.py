@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from legacylift_worker import ingest as ingest_mod
 from legacylift_worker.errors import PipelineError
 from legacylift_worker.ingest import ingest
 
@@ -36,6 +37,31 @@ def test_zip_symlink_member_is_rejected(tmp_path: Path) -> None:
         zf.writestr(info, "/tmp/target")
     dest = tmp_path / "dest"
     with pytest.raises(PipelineError, match="symlink"):
+        ingest(str(archive), dest)
+
+
+def test_zip_file_count_limit_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ingest_mod, "MAX_FILES", 1)
+    archive = tmp_path / "many.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("a.py", "print 1\n")
+        zf.writestr("b.py", "print 2\n")
+    dest = tmp_path / "dest"
+    with pytest.raises(PipelineError, match="members"):
+        ingest(str(archive), dest)
+
+
+def test_zip_byte_limit_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ingest_mod, "MAX_ARCHIVE_BYTES", 10)
+    archive = tmp_path / "big.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("a.py", "print 1\n")
+    dest = tmp_path / "dest"
+    with pytest.raises(PipelineError, match="zip exceeds"):
         ingest(str(archive), dest)
 
 

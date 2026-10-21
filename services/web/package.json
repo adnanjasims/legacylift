@@ -11,10 +11,11 @@
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 5173",
     "test": "vitest run",
+    "e2e": "playwright test",
     "lint": "eslint src vite.config.ts vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "format": "prettier --write src vite.config.ts vitest.config.ts index.html",
-    "format:check": "prettier --check src vite.config.ts vitest.config.ts index.html"
+    "format": "prettier --write src vite.config.ts vitest.config.ts index.html e2e playwright.config.ts",
+    "format:check": "prettier --check src vite.config.ts vitest.config.ts index.html e2e playwright.config.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -25,6 +26,7 @@
     "@types/node": "^20.17.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@playwright/test": "^1.55.0",
     "@vitejs/plugin-react": "^4.7.0",
     "eslint": "^9.36.0",
     "prettier": "^3.6.0",

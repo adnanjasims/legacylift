@@ -51,6 +51,39 @@ def test_sandbox_blocks_network(tmp_path: Path) -> None:
     assert result.timed_out is False
 
 
+def test_sandbox_root_is_read_only(tmp_path: Path) -> None:
+    (tmp_path / "ro.py").write_text(
+        "open('/cannot_write', 'w').write('nope')\n",
+        encoding="utf-8",
+    )
+    result = DockerBackend().run(
+        SandboxRequest(
+            image=PY3_IMAGE,
+            workspace=tmp_path,
+            argv=["python", "ro.py"],
+            limits=SandboxLimits(timeout_sec=20),
+        )
+    )
+    assert result.timed_out is False
+    assert result.exit_code != 0
+
+
+def test_sandbox_enforces_memory(tmp_path: Path) -> None:
+    (tmp_path / "mem.py").write_text(
+        "x = 'a' * (80 * 1024 * 1024)\nprint(len(x))\n",
+        encoding="utf-8",
+    )
+    result = DockerBackend().run(
+        SandboxRequest(
+            image=PY3_IMAGE,
+            workspace=tmp_path,
+            argv=["python", "mem.py"],
+            limits=SandboxLimits(memory_mb=32, timeout_sec=20),
+        )
+    )
+    assert result.exit_code != 0
+
+
 def test_sandbox_enforces_timeout(tmp_path: Path) -> None:
     (tmp_path / "sleep.py").write_text(
         "import time\ntime.sleep(30)\n", encoding="utf-8"

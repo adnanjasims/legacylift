@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Mapping
-from typing import Any
+from pathlib import Path
+from typing import Annotated, Any
 
-from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from legacylift_orchestrator.broker import (
@@ -16,12 +18,21 @@ from legacylift_orchestrator.broker import (
     PikaBroker,
     QueueMessage,
 )
+from legacylift_orchestrator.events import EventHub, iter_sse
 from legacylift_orchestrator.jsonlog import configure_logging
-from legacylift_orchestrator.models import JobStatus, User
+from legacylift_orchestrator.models import Job, JobStatus, User
 from legacylift_orchestrator.store import JobStore, MemoryJobStore
 from legacylift_orchestrator.tokens import decode_token, issue_token, jwt_secret
 
 SERVICE_NAME = "orchestrator"
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
+
+def upload_dir() -> Path:
+    raw = os.environ.get("UPLOAD_DIR", "").strip()
+    path = Path(raw) if raw else Path("/tmp/legacylift-uploads")  # nosec B108
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 class LoginBody(BaseModel):
@@ -77,9 +88,11 @@ def create_app(
     else:
         job_broker = MemoryBroker()
 
+    hub = EventHub()
     application = FastAPI(title="LegacyLift Orchestrator", version="0.1.0")
     application.state.store = job_store
     application.state.broker = job_broker
+    application.state.events = hub
 
     @application.get("/health")
     def health() -> Mapping[str, str]:
@@ -117,11 +130,31 @@ def create_app(
         }
 
     @application.post("/jobs")
-    def create_job(body: CreateJobBody, request: Request) -> dict[str, str]:
+    def create_job(body: CreateJobBody, request: Request) -> dict[str, Any]:
         actor = _actor(request, job_store)
         job = job_store.create_job(actor.id, body.source)
         job_broker.publish(QueueMessage(job_id=job.id, source=job.source, attempt=1))
-        return {"id": job.id, "status": job.status}
+        hub.publish(job.id, _job_payload(job))
+        return _job_payload(job)
+
+    @application.post("/jobs/upload")
+    async def upload_job(
+        request: Request, file: Annotated[UploadFile, File()]
+    ) -> dict[str, Any]:
+        actor = _actor(request, job_store)
+        name = file.filename or "source.zip"
+        if not name.lower().endswith(".zip"):
+            raise HTTPException(status_code=400, detail="upload must be a .zip file")
+        data = await file.read()
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=400, detail="zip exceeds 10 MB")
+        job = job_store.create_job(actor.id, "upload.zip")
+        dest = upload_dir() / f"{job.id}.zip"
+        dest.write_bytes(data)
+        job.source = str(dest)
+        job_broker.publish(QueueMessage(job_id=job.id, source=job.source, attempt=1))
+        hub.publish(job.id, _job_payload(job))
+        return _job_payload(job)
 
     @application.get("/jobs/{job_id}")
     def read_job(job_id: str, request: Request) -> dict[str, Any]:
@@ -129,14 +162,30 @@ def create_app(
         job = job_store.visible_job(job_id, actor)
         if job is None:
             raise HTTPException(status_code=404, detail="job not found")
-        return {
-            "id": job.id,
-            "source": job.source,
-            "status": job.status,
-            "attempt": job.attempt,
-            "error": job.error,
-            "report_dir": job.report_dir,
-        }
+        return _job_payload(job)
+
+    @application.get("/jobs/{job_id}/report")
+    def read_report(job_id: str, request: Request) -> Any:
+        actor = _actor(request, job_store)
+        job = job_store.visible_job(job_id, actor)
+        if job is None:
+            raise HTTPException(status_code=404, detail="job not found")
+        report = _load_report(job)
+        if report is None:
+            raise HTTPException(status_code=404, detail="report not ready")
+        return report
+
+    @application.get("/jobs/{job_id}/events")
+    def job_events(job_id: str, request: Request) -> StreamingResponse:
+        actor = _actor(request, job_store)
+        job = job_store.visible_job(job_id, actor)
+        if job is None:
+            raise HTTPException(status_code=404, detail="job not found")
+        return StreamingResponse(
+            iter_sse(hub, job_id, _job_payload(job)),
+            media_type="text/event-stream",
+            headers={"cache-control": "no-cache", "x-accel-buffering": "no"},
+        )
 
     @application.get("/internal/jobs/{job_id}")
     def internal_job(
@@ -161,6 +210,7 @@ def create_app(
         job = job_store.set_status(job_id, "running")
         if job is None:
             raise HTTPException(status_code=404, detail="job not found")
+        hub.publish(job_id, _job_payload(job))
         return {"id": job.id, "status": job.status}
 
     @application.post("/internal/jobs/{job_id}/complete")
@@ -173,6 +223,7 @@ def create_app(
         job = job_store.set_status(job_id, "completed", report_dir=body.report_dir)
         if job is None:
             raise HTTPException(status_code=404, detail="job not found")
+        hub.publish(job_id, _job_payload(job))
         return {"id": job.id, "status": job.status}
 
     @application.post("/internal/jobs/{job_id}/fail")
@@ -188,9 +239,33 @@ def create_app(
         )
         if job is None:
             raise HTTPException(status_code=404, detail="job not found")
+        hub.publish(job_id, _job_payload(job))
         return {"id": job.id, "status": job.status}
 
     return application
+
+
+def _job_payload(job: Job) -> dict[str, Any]:
+    return {
+        "id": job.id,
+        "source": job.source,
+        "status": job.status,
+        "attempt": job.attempt,
+        "error": job.error,
+        "report_dir": job.report_dir,
+    }
+
+
+def _load_report(job: Job) -> dict[str, Any] | None:
+    if not job.report_dir:
+        return None
+    path = Path(job.report_dir) / "report.json"
+    if not path.is_file():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return None
+    return payload
 
 
 def _actor(request: Request, store: JobStore) -> User:

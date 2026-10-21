@@ -74,8 +74,11 @@ services:
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}
       SEED_PASSWORD_ALICE: ${SEED_PASSWORD_ALICE:-dev-alice}
       SEED_PASSWORD_BOB: ${SEED_PASSWORD_BOB:-dev-bob}
+      UPLOAD_DIR: /uploads
     ports:
       - "${ORCHESTRATOR_PORT:-8000}:8000"
+    volumes:
+      - uploads:/uploads
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
       interval: 10s
@@ -103,6 +106,8 @@ services:
       WORKER_CONSUME: "1"
     ports:
       - "${WORKER_PORT:-8001}:8001"
+    volumes:
+      - uploads:/uploads
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8001/health"]
       interval: 10s
@@ -139,6 +144,7 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 5173
+      GATEWAY_URL: http://gateway:3000
     ports:
       - "${WEB_PORT:-5173}:5173"
     healthcheck:
@@ -154,3 +160,4 @@ services:
 volumes:
   postgres_data:
   rabbitmq_data:
+  uploads:

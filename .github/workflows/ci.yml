@@ -49,6 +49,13 @@ jobs:
       - name: Unit tests
         run: make test
 
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: services/web
+
+      - name: Playwright
+        run: make e2e
+
       - name: Eval harness
         run: make eval
 

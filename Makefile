@@ -6,7 +6,7 @@ WEB := services/web
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev dev-infra down test lint typecheck eval fmt compose-config ci migrate-samples db-migrate
+.PHONY: help install dev dev-infra down test lint typecheck eval fmt compose-config ci migrate-samples db-migrate e2e
 
 help:
 	@printf '%s\n' \
@@ -22,7 +22,8 @@ help:
 		'make db-migrate     apply Alembic migrations to DATABASE_URL' \
 		'make fmt            apply ruff and prettier' \
 		'make compose-config validate compose YAML' \
-		'make ci             lint, typecheck, test, eval'
+		'make e2e            Playwright against the web preview server' \
+		'make ci             lint, typecheck, test, eval, e2e'
 
 install:
 	$(UV) sync --all-packages --group dev
@@ -77,4 +78,7 @@ fmt:
 compose-config:
 	$(COMPOSE) config --quiet
 
-ci: lint test eval
+e2e:
+	npm --prefix $(WEB) run e2e
+
+ci: lint test eval e2e

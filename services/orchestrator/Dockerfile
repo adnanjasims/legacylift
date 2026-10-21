@@ -22,6 +22,8 @@ COPY src /app/src
 
 RUN pip install --no-cache-dir .
 
+RUN mkdir -p /uploads && chown 65534:65534 /uploads
+
 EXPOSE 8000
 
 USER nobody

@@ -12,6 +12,16 @@ test("GET /jobs without a token is unauthorized", async () => {
   }
 });
 
+test("GET /jobs/:id/report without a token is unauthorized", async () => {
+  const app = await buildApp({ jwtSecret: "unit-test-secret" });
+  try {
+    const response = await app.inject({ method: "GET", url: "/jobs/abc/report" });
+    expect(response.statusCode).toBe(401);
+  } finally {
+    await app.close();
+  }
+});
+
 test("POST /login without JWT_SECRET returns 503", async () => {
   const app = await buildApp({ jwtSecret: "" });
   try {

@@ -24,6 +24,8 @@ COPY services/worker/src /app/src
 RUN pip install --no-cache-dir /tmp/pkg-sandbox \
     && pip install --no-cache-dir .
 
+RUN mkdir -p /uploads && chown 65534:65534 /uploads
+
 EXPOSE 8001
 
 USER nobody

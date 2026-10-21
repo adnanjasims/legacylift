@@ -10,13 +10,81 @@ body {
 }
 
 main {
-  max-width: 42rem;
-  margin: 3rem auto;
-  padding: 0 1.25rem;
+  max-width: 56rem;
+  margin: 2rem auto;
+  padding: 0 1.25rem 3rem;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 h1 {
   font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+}
+
+form,
+section {
+  margin-top: 1.5rem;
+}
+
+label {
+  display: block;
+  margin: 0.75rem 0;
+}
+
+input[type="text"],
+input[type="password"],
+input:not([type]) {
+  display: block;
+  width: 100%;
+  max-width: 32rem;
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #8a8680;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+button {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  border: 0;
+  background: #1a1a1a;
+  color: #f4f1ea;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid #cfc9be;
+  padding: 0.4rem 0.5rem;
+  vertical-align: top;
+}
+
+pre {
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #cfc9be;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+}
+
+[role="alert"] {
+  color: #7a1f1f;
 }
