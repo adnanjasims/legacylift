@@ -1,0 +1,98 @@
+[project]
+name = "legacylift"
+version = "0.1.0"
+description = "AI-assisted code modernization with sandbox verification."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "legacylift-orchestrator",
+    "legacylift-worker",
+    "legacylift-sandbox",
+    "legacylift-eval",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "bandit>=1.7",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+    "services/orchestrator",
+    "services/worker",
+    "services/sandbox",
+    "eval",
+]
+
+[tool.uv.sources]
+legacylift-orchestrator = { workspace = true }
+legacylift-worker = { workspace = true }
+legacylift-sandbox = { workspace = true }
+legacylift-eval = { workspace = true }
+
+[tool.pytest.ini_options]
+markers = [
+    "docker: needs a running Docker daemon",
+]
+testpaths = [
+    "services/orchestrator/tests",
+    "services/worker/tests",
+    "services/sandbox/tests",
+    "eval/tests",
+]
+pythonpath = [
+    "services/orchestrator/src",
+    "services/worker/src",
+    "services/sandbox/src",
+    "eval/src",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = [
+    "services/orchestrator/src",
+    "services/worker/src",
+    "services/sandbox/src",
+    "eval/src",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E261", "E262", "E265"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = [
+    "services/orchestrator/src",
+    "services/worker/src",
+    "services/sandbox/src",
+    "eval/src",
+]
+packages = [
+    "legacylift_orchestrator",
+    "legacylift_worker",
+    "legacylift_sandbox",
+    "legacylift_eval",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "ibm_watsonx_ai",
+    "ibm_watsonx_ai.*",
+    "pgvector",
+    "pgvector.*",
+]
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101"]

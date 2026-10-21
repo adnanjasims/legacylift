@@ -1,0 +1,21 @@
+[project]
+name = "legacylift-eval"
+version = "0.1.0"
+description = "Evaluation harness for LegacyLift corpus runs."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "legacylift-worker",
+    "legacylift-sandbox",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.4,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "legacylift_eval"
+module-root = "src"
+
+[tool.uv.sources]
+legacylift-worker = { workspace = true }
+legacylift-sandbox = { workspace = true }

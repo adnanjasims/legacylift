@@ -1,0 +1,14 @@
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.git
+.github
+node_modules
+**/__pycache__
+**/*.pyc
+reports
+services/gateway/node_modules
+services/web/node_modules
+services/web/dist
+services/gateway/dist

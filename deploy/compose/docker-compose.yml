@@ -1,0 +1,147 @@
+name: legacylift
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-legacylift}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-legacylift}
+      POSTGRES_DB: ${POSTGRES_DB:-legacylift}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-legacylift} -d ${POSTGRES_DB:-legacylift}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    shm_size: 128mb
+
+  rabbitmq:
+    image: rabbitmq:4.3-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-legacylift}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-legacylift}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  gateway:
+    build:
+      context: ../../services/gateway
+      dockerfile: Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${GATEWAY_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  orchestrator:
+    build:
+      context: ../../services/orchestrator
+      dockerfile: Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-legacylift}:${POSTGRES_PASSWORD:-legacylift}@postgres:5432/${POSTGRES_DB:-legacylift}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-legacylift}:${RABBITMQ_PASSWORD:-legacylift}@rabbitmq:5672/
+    ports:
+      - "${ORCHESTRATOR_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: services/worker/Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8001
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-legacylift}:${POSTGRES_PASSWORD:-legacylift}@postgres:5432/${POSTGRES_DB:-legacylift}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-legacylift}:${RABBITMQ_PASSWORD:-legacylift}@rabbitmq:5672/
+    ports:
+      - "${WORKER_PORT:-8001}:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  sandbox:
+    build:
+      context: ../../services/sandbox
+      dockerfile: Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8002
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${SANDBOX_PORT:-8002}:8002"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  web:
+    build:
+      context: ../../services/web
+      dockerfile: Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: 5173
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:5173/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  rabbitmq_data:

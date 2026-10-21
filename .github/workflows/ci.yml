@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            services/gateway/package-lock.json
+            services/web/package-lock.json
+
+      - name: Install Python workspace
+        run: uv sync --all-packages --group dev
+
+      - name: Install gateway
+        run: npm ci
+        working-directory: services/gateway
+
+      - name: Install web
+        run: npm ci
+        working-directory: services/web
+
+      - name: Lint and typecheck
+        run: make lint
+
+      - name: Unit tests
+        run: make test
+
+      - name: Pull sandbox images
+        run: |
+          docker pull python:2.7.18-slim
+          docker pull python:3.12-slim-bookworm
+
+      - name: Eval harness
+        run: make eval
+
+  migrate-samples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install Python workspace
+        run: uv sync --all-packages --group dev
+
+      - name: Pull sandbox images
+        run: |
+          docker pull python:2.7.18-slim
+          docker pull python:3.12-slim-bookworm
+
+      - name: Migrate corpus samples
+        run: make migrate-samples
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        run: |
+          set -euo pipefail
+          version="8.24.3"
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz" \
+            -o /tmp/gitleaks.tar.gz
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          /tmp/gitleaks detect --source . --verbose --redact

@@ -1,0 +1,5 @@
+title = "LegacyLift"
+
+[allowlist]
+description = "Local compose placeholders in .env.example are not secrets"
+paths = ['''\.env\.example$''']
