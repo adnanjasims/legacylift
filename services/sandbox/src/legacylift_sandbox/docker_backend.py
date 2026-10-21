@@ -24,13 +24,16 @@ class SandboxError(RuntimeError):
     """Docker is missing, the daemon is down, or the run cannot start."""
 
 
+def docker_cli() -> str:
+    """Return the docker binary. CI runners sometimes omit it from PATH."""
+    return shutil.which(DOCKER_BIN) or "/usr/bin/docker"
+
+
 def docker_available() -> bool:
     """Return True when the docker CLI can talk to a daemon."""
-    if shutil.which(DOCKER_BIN) is None:
-        return False
     try:
         probe = subprocess.run(  # nosec B603
-            [DOCKER_BIN, "info"],
+            [docker_cli(), "info"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -122,8 +125,7 @@ class DockerBackend:
         Raises:
             SandboxError: docker CLI or daemon is not usable.
         """
-        if shutil.which(DOCKER_BIN) is None:
-            raise SandboxError("docker CLI not found on PATH")
+        binary = docker_cli()
         if not docker_available():
             raise SandboxError("docker daemon is not running")
         if not request.workspace.is_dir():
@@ -131,6 +133,7 @@ class DockerBackend:
 
         name = f"legacylift-{uuid.uuid4().hex[:12]}"
         argv = docker_run_argv(request, name)
+        argv[0] = binary
         started = time.monotonic()
         timed_out = False
         try:
@@ -150,7 +153,7 @@ class DockerBackend:
             stdout = _as_text(exc.stdout)
             stderr = _as_text(exc.stderr)
             subprocess.run(  # nosec B603
-                [DOCKER_BIN, "kill", name],
+                [binary, "kill", name],
                 capture_output=True,
                 text=True,
                 timeout=10,

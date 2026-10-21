@@ -90,6 +90,8 @@ module = [
     "ibm_watsonx_ai.*",
     "pgvector",
     "pgvector.*",
+    "pika",
+    "pika.*",
 ]
 ignore_missing_imports = true
 

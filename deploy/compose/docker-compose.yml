@@ -44,6 +44,8 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      JWT_SECRET: ${JWT_SECRET:-}
+      ORCHESTRATOR_URL: http://orchestrator:8000
     ports:
       - "${GATEWAY_PORT:-3000}:3000"
     healthcheck:
@@ -68,6 +70,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgresql://${POSTGRES_USER:-legacylift}:${POSTGRES_PASSWORD:-legacylift}@postgres:5432/${POSTGRES_DB:-legacylift}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-legacylift}:${RABBITMQ_PASSWORD:-legacylift}@rabbitmq:5672/
+      JWT_SECRET: ${JWT_SECRET:-}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}
+      SEED_PASSWORD_ALICE: ${SEED_PASSWORD_ALICE:-dev-alice}
+      SEED_PASSWORD_BOB: ${SEED_PASSWORD_BOB:-dev-bob}
     ports:
       - "${ORCHESTRATOR_PORT:-8000}:8000"
     healthcheck:
@@ -92,6 +98,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgresql://${POSTGRES_USER:-legacylift}:${POSTGRES_PASSWORD:-legacylift}@postgres:5432/${POSTGRES_DB:-legacylift}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-legacylift}:${RABBITMQ_PASSWORD:-legacylift}@rabbitmq:5672/
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}
+      WORKER_CONSUME: "1"
     ports:
       - "${WORKER_PORT:-8001}:8001"
     healthcheck:

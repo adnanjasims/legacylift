@@ -12,6 +12,7 @@ dependencies = [
     "alembic>=1.13",
     "psycopg[binary]>=3.2",
     "pgvector>=0.3",
+    "pika>=1.3",
     "legacylift-sandbox",
 ]
 

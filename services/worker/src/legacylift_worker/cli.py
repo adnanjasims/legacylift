@@ -45,7 +45,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"unknown command {args.command}")
     if not docker_available():
         print(
-            "docker daemon is not running; DockerBackend cannot execute code",
+            "docker CLI cannot reach a daemon (docker info failed); "
+            "DockerBackend cannot execute code",
             file=sys.stderr,
         )
         return 2

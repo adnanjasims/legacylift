@@ -6,7 +6,7 @@ import { buildApp } from "./app.js";
  * is reachable on the published port.
  */
 async function main(): Promise<void> {
-  const app = buildApp();
+  const app = await buildApp();
   const port = Number(process.env.PORT ?? 3000);
   const host = process.env.HOST ?? "127.0.0.1";
   await app.listen({ port, host });
