@@ -12,6 +12,7 @@ import shutil
 import subprocess  # nosec B404
 import time
 import uuid
+import tempfile
 from pathlib import Path
 from typing import Final
 
@@ -85,6 +86,25 @@ def _docker_talks(binary: str) -> bool:
         if probe.returncode == 0:
             return True
     return False
+
+def _stage_input(source: Path, parent: Path) -> Path:
+    """Copy source under parent with permissions the sandbox user can read.
+
+    Host temp directories are often mode 0700, which uid 65534 cannot
+    traverse on Linux. Docker Desktop on macOS hides this.
+    """
+    parent.chmod(0o755)
+    staged = parent / "input"
+    shutil.copytree(source, staged, symlinks=True)
+    for path in (staged, *staged.rglob("*")):
+        if path.is_symlink():
+            continue
+        mode = path.stat().st_mode
+        extra = 0o044  # read for group and others
+        if path.is_dir() or mode & 0o100:
+            extra |= 0o011  # execute for directories and executables
+        path.chmod(mode | extra)
+    return staged
 
 
 def docker_run_argv(request: SandboxRequest, container_name: str) -> list[str]:
