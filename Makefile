@@ -14,7 +14,7 @@ REWRITE_PLUGIN := org.openrewrite.maven:rewrite-maven-plugin:6.46.1
 REWRITE_RECIPES := org.openrewrite.recipe:rewrite-migrate-java:3.42.1
 REWRITE_RECIPE := org.openrewrite.java.migrate.UpgradeToJava21
 
-.PHONY: help install dev dev-infra down test lint typecheck eval fmt compose-config ci migrate-samples db-migrate e2e java-deps _java-seed _java-seed-rewrite
+.PHONY: help install dev dev-infra down test lint typecheck eval fmt compose-config ci migrate-samples db-migrate e2e java-deps _java-seed _java-seed-rewrite k8s-render kind-up kind-load kind-apply
 
 help:
 	@printf '%s\n' \
@@ -32,6 +32,10 @@ help:
 		'make fmt            apply ruff and prettier' \
 		'make compose-config validate compose YAML' \
 		'make e2e            Playwright against the web preview server' \
+		'make k8s-render     print the kind overlay (kubectl kustomize)' \
+		'make kind-up        create the local kind cluster' \
+		'make kind-load      build service images and load them into kind' \
+		'make kind-apply     apply the kind overlay' \
 		'make ci             lint, typecheck, test, eval, e2e'
 
 install:
@@ -119,5 +123,26 @@ compose-config:
 
 e2e:
 	npm --prefix $(WEB) run e2e
+
+k8s-render:
+	kubectl kustomize deploy/k8s/overlays/kind
+
+kind-up:
+	kind create cluster --name legacylift --config deploy/k8s/overlays/kind/cluster.yaml
+
+kind-load:
+	docker build -t legacylift-gateway:local services/gateway
+	docker build -t legacylift-orchestrator:local services/orchestrator
+	docker build -t legacylift-sandbox:local services/sandbox
+	docker build -t legacylift-web:local services/web
+	docker build -t legacylift-worker:local -f services/worker/Dockerfile .
+	kind load docker-image legacylift-gateway:local --name legacylift
+	kind load docker-image legacylift-orchestrator:local --name legacylift
+	kind load docker-image legacylift-sandbox:local --name legacylift
+	kind load docker-image legacylift-web:local --name legacylift
+	kind load docker-image legacylift-worker:local --name legacylift
+
+kind-apply:
+	kubectl apply -k deploy/k8s/overlays/kind
 
 ci: lint test eval e2e

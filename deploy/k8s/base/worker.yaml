@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: legacylift
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      serviceAccountName: worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: legacylift-worker:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: "8001"
+            - name: SANDBOX_BACKEND
+              value: k8s
+            - name: WORKER_CONSUME
+              value: "1"
+            - name: ORCHESTRATOR_URL
+              value: http://orchestrator:8000
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: legacylift-secrets
+                  key: DATABASE_URL
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: legacylift-secrets
+                  key: RABBITMQ_URL
+            - name: INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: legacylift-secrets
+                  key: INTERNAL_TOKEN
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: uploads
+              mountPath: /uploads
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: uploads
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker
+  namespace: legacylift
+spec:
+  selector:
+    app: worker
+  ports:
+    - name: http
+      port: 8001
+      targetPort: 8001

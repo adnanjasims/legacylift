@@ -45,6 +45,9 @@ jobs:
       - name: Lint and typecheck
         run: make lint
 
+      - name: Render kustomize
+        run: kubectl kustomize deploy/k8s/overlays/kind > /tmp/kind.yaml
+
       - name: Pull sandbox images
         run: |
           docker pull python:2.7.18-slim

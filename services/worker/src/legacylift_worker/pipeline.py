@@ -9,7 +9,13 @@ import uuid
 from pathlib import Path
 from time import perf_counter
 
-from legacylift_sandbox import DEFAULT_LIMITS, JAVA_LIMITS, DockerBackend, SandboxLimits
+from legacylift_sandbox import (
+    DEFAULT_LIMITS,
+    JAVA_LIMITS,
+    SandboxBackend,
+    SandboxLimits,
+    sandbox_backend,
+)
 from legacylift_worker.analyze import analyze_tree
 from legacylift_worker.characterize import generate_and_keep_tests
 from legacylift_worker.errors import PipelineError
@@ -31,7 +37,7 @@ def run_migration(
     source: str,
     out_dir: Path,
     *,
-    backend: DockerBackend | None = None,
+    backend: SandboxBackend | None = None,
     limits: SandboxLimits = DEFAULT_LIMITS,
     llm: LLMProvider | None = None,
 ) -> JobReport:
@@ -49,7 +55,7 @@ def run_migration(
     """
     configure_logging()
     started = perf_counter()
-    runner = backend if backend is not None else DockerBackend()
+    runner = backend if backend is not None else sandbox_backend()
     job_id = uuid.uuid4().hex[:12]
     work = Path(tempfile.mkdtemp(prefix=f"legacylift-{job_id}-"))
     original = work / "original"

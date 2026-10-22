@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from legacylift_sandbox import JAVA21_IMAGE, JAVA_LIMITS, DockerBackend, SandboxLimits
+from legacylift_sandbox import JAVA21_IMAGE, JAVA_LIMITS, SandboxBackend, SandboxLimits
 from legacylift_worker.errors import PipelineError
 from legacylift_worker.maven import rewrite_argv, run_maven
 
@@ -13,7 +13,7 @@ from legacylift_worker.maven import rewrite_argv, run_maven
 def migrate_with_rewrite(
     original: Path,
     migrated: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits = JAVA_LIMITS,
 ) -> str:
     """Copy the Maven tree and run org.openrewrite.java.migrate.UpgradeToJava21."""

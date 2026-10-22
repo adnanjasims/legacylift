@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Protocol
 
 
 @dataclass(frozen=True)
@@ -52,3 +53,11 @@ class SandboxResult:
     timed_out: bool
     duration_ms: int
     argv: list[str]
+
+
+class SandboxBackend(Protocol):
+    """DockerBackend and K8sJobBackend both implement run()."""
+
+    def run(self, request: SandboxRequest) -> SandboxResult:
+        """Execute argv against the workspace and return captured output."""
+        ...

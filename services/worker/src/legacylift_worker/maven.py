@@ -10,7 +10,7 @@ from legacylift_sandbox import (
     JAVA8_IMAGE,
     JAVA21_IMAGE,
     JAVA_LIMITS,
-    DockerBackend,
+    SandboxBackend,
     SandboxLimits,
     SandboxRequest,
 )
@@ -82,7 +82,7 @@ def rewrite_argv() -> list[str]:
 
 def run_maven(
     workspace: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     *,
     image: str,
     argv: list[str],
@@ -118,7 +118,7 @@ def run_maven(
 
 def run_maven_tests(
     workspace: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     *,
     image: str,
     limits: SandboxLimits = JAVA_LIMITS,
@@ -130,7 +130,7 @@ def run_maven_tests(
 
 def compile_java(
     workspace: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits = JAVA_LIMITS,
 ) -> SuiteRun:
     return run_maven(
@@ -144,7 +144,7 @@ def compile_java(
 
 def characterize_java(
     original: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits = JAVA_LIMITS,
 ) -> SuiteRun:
     """Run the project's JUnit 5 suite on Java 8, (tests ship with the sample)"""

@@ -10,7 +10,7 @@ from typing import Any
 
 from legacylift_sandbox import (
     PY2_IMAGE,
-    DockerBackend,
+    SandboxBackend,
     SandboxLimits,
     SandboxRequest,
 )
@@ -43,7 +43,7 @@ class SuiteRun:
 
 def generate_and_keep_tests(
     original: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits,
 ) -> SuiteRun:
     """Probe original modules, write unittest files, keep tests that pass 3 times."""
@@ -80,7 +80,7 @@ def generate_and_keep_tests(
 
 def _run(
     workspace: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits,
     argv: list[str],
     image: str,
@@ -113,7 +113,7 @@ def _run(
 
 def run_unittest(
     workspace: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits,
     image: str,
 ) -> SuiteRun:
@@ -123,7 +123,7 @@ def run_unittest(
 
 def _keep_stable_tests(
     original: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits,
 ) -> set[str]:
     runs = [run_unittest(original, backend, limits, PY2_IMAGE) for _ in range(3)]

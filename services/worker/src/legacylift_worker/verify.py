@@ -8,7 +8,7 @@ from legacylift_sandbox import (
     JAVA21_IMAGE,
     JAVA_LIMITS,
     PY3_IMAGE,
-    DockerBackend,
+    SandboxBackend,
     SandboxLimits,
     SandboxRequest,
 )
@@ -19,7 +19,7 @@ from legacylift_worker.maven import compile_java, is_maven_tree, run_maven_tests
 
 def compile_migrated(
     migrated: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits,
 ) -> SuiteRun:
     """Run python -m compileall on the migrated tree."""
@@ -42,7 +42,7 @@ def compile_migrated(
 
 def verify_migrated(
     migrated: Path,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits,
 ) -> tuple[SuiteRun, SuiteRun]:
     """Compile then run tests on the migrated tree (Python 3.12 or Java 21)."""

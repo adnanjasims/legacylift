@@ -6,7 +6,7 @@ import logging
 import re
 from pathlib import Path
 
-from legacylift_sandbox import DockerBackend, SandboxLimits
+from legacylift_sandbox import SandboxBackend, SandboxLimits
 from legacylift_worker.analyze import FileAnalysis
 from legacylift_worker.characterize import SuiteRun
 from legacylift_worker.llm.base import ChatMessage, LLMProvider, UsageRecord
@@ -75,7 +75,7 @@ def repair_until_verified(
     before: SuiteRun,
     after: SuiteRun,
     compiled: SuiteRun,
-    backend: DockerBackend,
+    backend: SandboxBackend,
     limits: SandboxLimits,
     llm: LLMProvider,
     index: RetrievalIndex,

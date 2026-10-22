@@ -2,3 +2,17 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
+secretGenerator:
+  - name: legacylift-secrets
+    namespace: legacylift
+    literals:
+      - POSTGRES_PASSWORD=legacylift
+      - RABBITMQ_PASSWORD=legacylift
+      - JWT_SECRET=kind-jwt-secret-at-least-32-bytes-long
+      - INTERNAL_TOKEN=kind-internal-token
+      - DATABASE_URL=postgresql://legacylift:legacylift@postgres:5432/legacylift
+      - RABBITMQ_URL=amqp://legacylift:legacylift@rabbitmq:5672/
+generatorOptions:
+  disableNameSuffixHash: true
+patches:
+  - path: gateway-nodeport.yaml
