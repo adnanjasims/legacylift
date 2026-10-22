@@ -20,6 +20,7 @@ from legacylift_sandbox.models import SandboxRequest, SandboxResult
 DOCKER_BIN: Final = "docker"
 SANDBOX_USER: Final = "65534:65534"
 MAX_OUTPUT_BYTES: Final = 1_000_000
+_DOCKER_PROBE_TIMEOUT_SEC: Final = 3.0
 _DOCKER_CANDIDATES: Final = (
     "/usr/bin/docker",
     "/usr/local/bin/docker",
@@ -34,8 +35,12 @@ class SandboxError(RuntimeError):
 def docker_cli() -> str:
     """Return a docker binary that can talk to the daemon, if one exists."""
     found = shutil.which(DOCKER_BIN)
+    seen: set[str] = set()
     for candidate in (found, *_DOCKER_CANDIDATES):
-        if candidate and _docker_talks(candidate):
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        if _docker_talks(candidate):
             return candidate
     return found or "/usr/bin/docker"
 
@@ -46,8 +51,9 @@ def docker_available() -> bool:
 
 
 def docker_subprocess_env() -> dict[str, str]:
-    """Keep DOCKER_HOST so uv-launched Python can reach the GHA socket."""
+    """Pass the host docker socket into subprocesses spawned from make or uv."""
     env = os.environ.copy()
+    env.setdefault("DOCKER_CLI_HINTS", "false")
     socket = Path("/var/run/docker.sock")
     if "DOCKER_HOST" not in env and socket.exists():
         env["DOCKER_HOST"] = "unix:///var/run/docker.sock"
@@ -62,7 +68,7 @@ def _docker_talks(binary: str) -> bool:
         return False
     env = docker_subprocess_env()
     for argv in (
-        [binary, "version", "--format", "{{.Server.Version}}"],
+        [binary, "info", "-f", "{{.ServerVersion}}"],
         [binary, "info"],
     ):
         try:
@@ -70,7 +76,7 @@ def _docker_talks(binary: str) -> bool:
                 argv,
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=_DOCKER_PROBE_TIMEOUT_SEC,
                 check=False,
                 env=env,
             )

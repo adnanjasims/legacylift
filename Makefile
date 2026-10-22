@@ -1,5 +1,6 @@
 PYTHON ?= python3.12
 UV ?= uv
+VENV_PYTHON := $(CURDIR)/.venv/bin/python
 COMPOSE := docker compose -f deploy/compose/docker-compose.yml
 GATEWAY := services/gateway
 WEB := services/web
@@ -53,7 +54,7 @@ down:
 	$(COMPOSE) down
 
 test:
-	$(UV) run pytest
+	$(VENV_PYTHON) -m pytest
 	npm --prefix $(GATEWAY) test
 	npm --prefix $(WEB) test
 
@@ -72,7 +73,7 @@ typecheck:
 	npm --prefix $(WEB) run typecheck
 
 eval:
-	$(UV) run python -m legacylift_eval.run
+	$(VENV_PYTHON) -m legacylift_eval.run
 
 java-deps:
 	mkdir -p "$(JAVA_M2)"
@@ -103,11 +104,11 @@ _java-seed-rewrite:
 			-Drewrite.pomCacheEnabled=false'
 
 migrate-samples:
-	$(UV) run python -m legacylift_worker.cli migrate corpus/py2_textkit --out reports/py2_textkit --timeout 120
-	$(UV) run python -m legacylift_worker.cli migrate corpus/py2_pricing --out reports/py2_pricing --timeout 120
-	$(UV) run python -m legacylift_worker.cli migrate corpus/py2_counts --out reports/py2_counts --timeout 120
-	$(UV) run python -m legacylift_worker.cli migrate corpus/java8_box --out reports/java8_box --timeout 300 --memory-mb 1536
-	$(UV) run python -m legacylift_worker.cli migrate corpus/java8_urlkit --out reports/java8_urlkit --timeout 300 --memory-mb 1536
+	$(VENV_PYTHON) -m legacylift_worker.cli migrate corpus/py2_textkit --out reports/py2_textkit --timeout 120
+	$(VENV_PYTHON) -m legacylift_worker.cli migrate corpus/py2_pricing --out reports/py2_pricing --timeout 120
+	$(VENV_PYTHON) -m legacylift_worker.cli migrate corpus/py2_counts --out reports/py2_counts --timeout 120
+	$(VENV_PYTHON) -m legacylift_worker.cli migrate corpus/java8_box --out reports/java8_box --timeout 300 --memory-mb 1536
+	$(VENV_PYTHON) -m legacylift_worker.cli migrate corpus/java8_urlkit --out reports/java8_urlkit --timeout 300 --memory-mb 1536
 
 db-migrate:
 	$(UV) run alembic -c services/worker/alembic.ini upgrade head

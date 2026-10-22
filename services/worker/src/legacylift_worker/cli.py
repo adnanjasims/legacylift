@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
-from legacylift_sandbox import DEFAULT_LIMITS, SandboxLimits, docker_available
+from legacylift_sandbox import (
+    DEFAULT_LIMITS,
+    SandboxError,
+    SandboxLimits,
+    docker_available,
+)
+from legacylift_sandbox.docker_backend import docker_cli
 from legacylift_worker.errors import PipelineError
 from legacylift_worker.llm.factory import provider_from_name
 from legacylift_worker.pipeline import run_migration
@@ -44,9 +51,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command != "migrate":
         parser.error(f"unknown command {args.command}")
     if not docker_available():
+        sock = Path("/var/run/docker.sock")
         print(
             "docker CLI cannot reach a daemon (docker info failed); "
-            "DockerBackend cannot execute code",
+            f"binary={docker_cli()} sock_exists={sock.exists()} "
+            f"DOCKER_HOST={os.environ.get('DOCKER_HOST', '')!r}",
             file=sys.stderr,
         )
         return 2
@@ -54,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         llm = provider_from_name(args.llm)
         report = run_migration(args.source, args.out, limits=limits, llm=llm)
-    except PipelineError as exc:
+    except (PipelineError, SandboxError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     verified = report.verified_count()

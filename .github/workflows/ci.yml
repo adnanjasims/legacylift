@@ -11,6 +11,7 @@ concurrency:
 env:
   DOCKER_HOST: unix:///var/run/docker.sock
   MAVEN_REPO_LOCAL: ${{ github.workspace }}/reports/m2
+  PYTHONUNBUFFERED: "1"
 
 jobs:
   lint-test:
@@ -59,13 +60,26 @@ jobs:
         uses: actions/cache@v4
         with:
           path: reports/m2
-          key: m2-or-6.46.1-rj-3.42.1-${{ hashFiles('corpus/java8_box/pom.xml', 'corpus/java8_urlkit/pom.xml') }}
+          key: m2-or-6.46.1-rj-3.42.1-${{ hashFiles('corpus/java8_box/pom.xml') }}-${{ hashFiles('corpus/java8_urlkit/pom.xml') }}
 
       - name: Seed Maven offline cache
         run: make java-deps
 
+      - name: Allow Python to use Docker
+        run: |
+          ls -l /var/run/docker.sock /usr/bin/docker
+          id
+          sudo chmod a+rw /var/run/docker.sock
+          .venv/bin/python -c "from legacylift_sandbox import docker_available; from legacylift_sandbox.docker_backend import docker_cli; print('docker_cli', docker_cli()); print('docker_available', docker_available())"
+
       - name: Unit tests
-        run: make test
+        run: .venv/bin/python -m pytest -ra --tb=short
+
+      - name: Gateway tests
+        run: npm --prefix services/gateway test
+
+      - name: Web tests
+        run: npm --prefix services/web test
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -101,10 +115,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: reports/m2
-          key: m2-or-6.46.1-rj-3.42.1-${{ hashFiles('corpus/java8_box/pom.xml', 'corpus/java8_urlkit/pom.xml') }}
+          key: m2-or-6.46.1-rj-3.42.1-${{ hashFiles('corpus/java8_box/pom.xml') }}-${{ hashFiles('corpus/java8_urlkit/pom.xml') }}
 
       - name: Seed Maven offline cache
         run: make java-deps
+
+      - name: Allow Python to use Docker
+        run: |
+          ls -l /var/run/docker.sock /usr/bin/docker
+          id
+          sudo chmod a+rw /var/run/docker.sock
+          .venv/bin/python -c "from legacylift_sandbox import docker_available; from legacylift_sandbox.docker_backend import docker_cli; print('docker_cli', docker_cli()); print('docker_available', docker_available())"
 
       - name: Migrate corpus samples
         run: make migrate-samples
