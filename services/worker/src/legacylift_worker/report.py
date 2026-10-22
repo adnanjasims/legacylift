@@ -138,6 +138,7 @@ def build_report(
     provider: str | None = None,
     model_id: str | None = None,
     wall_clock_sec: float = 0.0,
+    tool: str = "2to3 (CPython 3.12 lib2to3 default fixers)",
 ) -> JobReport:
     """Attach before/after test counts and diffs to each analyzed source file."""
     before_by_mod = _index_by_module(before)
@@ -148,7 +149,10 @@ def build_report(
     files: list[FileReport] = []
     notes: list[str] = []
     if not compile_ok:
-        notes.append("python -m compileall failed on the migrated tree.")
+        if analysis.language == "java":
+            notes.append("mvn test-compile failed on the migrated tree.")
+        else:
+            notes.append("python -m compileall failed on the migrated tree.")
     for item in analysis.ranked_files():
         module = Path(item.path).stem
         b_pass, b_fail = before_by_mod.get(module, (0, 0))
@@ -184,6 +188,7 @@ def build_report(
         source=source,
         language=analysis.language,
         version_guess=analysis.version_guess,
+        tool=tool,
         files=files,
         notes=notes,
         mode=mode,
@@ -226,8 +231,9 @@ def render_markdown(report: JobReport) -> str:
         "",
         "Plain English: characterization tests were generated from the original",
         "Python 2 code in Docker, then the same tests were run after a 2to3",
-        "rewrite. A file is verified only when tests that passed on the original",
-        "also pass on Python 3.12.",
+        "rewrite. Java 8 trees ran JUnit on Java 8, then again on Java 21",
+        "after OpenRewrite UpgradeToJava21. A file is verified only when tests",
+        "that passed on the original also pass after migration.",
         "",
         f"- Source: `{report.source}`",
         f"- Detected: {report.language} {report.version_guess}",
@@ -296,8 +302,21 @@ def _index_by_module(run: SuiteRun) -> dict[str, tuple[int, int]]:
 
 
 def _module_from_test_id(test_id: str) -> str:
-    """Map test_char_pricing.TestPricing.test_add_tax_0 to pricing."""
+    """Map test_char_pricing.TestPricing.test_add_tax_0 to pricing.
+
+    Maven surefire ids are com.example.BoxTest (or BoxTest.testFoo).
+    """
     head = test_id.split(".", 1)[0]
     if head.startswith("test_char_"):
         return head[len("test_char_") :]
+    if "." in test_id:
+        parts = test_id.split(".")
+        cls = parts[-1]
+        if cls and cls[0].islower() and len(parts) >= 2:
+            cls = parts[-2]
+        if cls.endswith("Test"):
+            return cls[: -len("Test")]
+        return cls
+    if head.endswith("Test"):
+        return head[: -len("Test")]
     return head

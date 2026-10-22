@@ -21,6 +21,11 @@ DEFAULT_LIMITS = SandboxLimits()
 
 PY2_IMAGE = "python:2.7.18-slim"
 PY3_IMAGE = "python:3.12-slim-bookworm"
+JAVA8_IMAGE = "maven:3.9-eclipse-temurin-8"
+JAVA21_IMAGE = "maven:3.9-eclipse-temurin-21"
+JAVA_LIMITS = SandboxLimits(
+    timeout_sec=300.0, memory_mb=1536, cpus="1", pids=256, tmpfs_mb=1024
+)
 
 
 @dataclass(frozen=True)
@@ -33,6 +38,8 @@ class SandboxRequest:
     limits: SandboxLimits = DEFAULT_LIMITS
     platform: str | None = None
     env: dict[str, str] = field(default_factory=dict)
+    extra_ro: tuple[tuple[str, str], ...] = ()
+    extra_rw: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

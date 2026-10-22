@@ -8,5 +8,5 @@ Universal (public domain dedication).
 | `py2_textkit/` | written for this repo | CC0 1.0 |
 | `py2_pricing/` | written for this repo | CC0 1.0 |
 | `py2_counts/` | written for this repo | CC0 1.0 |
-
-Java 8 samples to be configured later
+| `java8_box/` | written for this repo | CC0 1.0 |
+| `java8_urlkit/` | written for this repo | CC0 1.0 |

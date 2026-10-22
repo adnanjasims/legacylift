@@ -17,12 +17,16 @@ from legacylift_eval.metrics import (
     render_results,
 )
 from legacylift_sandbox import DEFAULT_LIMITS, SandboxLimits, docker_available
+from legacylift_worker.errors import PipelineError
 from legacylift_worker.llm.base import LLMProvider
 from legacylift_worker.llm.factory import configured_provider
+from legacylift_worker.maven import maven_repo
 from legacylift_worker.pipeline import run_migration
 from legacylift_worker.report import JobReport
 
-CORPUS = ("py2_pricing", "py2_textkit", "py2_counts")
+CORPUS_PYTHON = ("py2_pricing", "py2_textkit", "py2_counts")
+CORPUS_JAVA = ("java8_box", "java8_urlkit")
+CORPUS = CORPUS_PYTHON + CORPUS_JAVA
 
 
 def repo_root() -> Path:
@@ -63,8 +67,16 @@ def run_eval(root: Path) -> EvalOutcome:
         timeout_sec=max(DEFAULT_LIMITS.timeout_sec, 120.0),
         memory_mb=DEFAULT_LIMITS.memory_mb,
     )
+    names = list(CORPUS_PYTHON)
+    try:
+        maven_repo()
+        names.extend(CORPUS_JAVA)
+    except PipelineError:
+        notes.append(
+            "Java corpus skipped. Run make java-deps for the offline Maven cache."
+        )
     det_reports, det_wall = _run_mode(
-        root, limits, llm=None, stamp="eval-deterministic"
+        root, limits, llm=None, stamp="eval-deterministic", names=names
     )
     deterministic = aggregate("deterministic", det_reports, det_wall)
     llm_provider = configured_provider()
@@ -77,7 +89,7 @@ def run_eval(root: Path) -> EvalOutcome:
         llm_metrics = None
     else:
         llm_reports, llm_wall = _run_mode(
-            root, limits, llm=llm_provider, stamp="eval-llm"
+            root, limits, llm=llm_provider, stamp="eval-llm", names=names
         )
         llm_metrics = aggregate(
             "deterministic+llm",
@@ -101,10 +113,11 @@ def _run_mode(
     *,
     llm: LLMProvider | None,
     stamp: str,
+    names: list[str],
 ) -> tuple[list[JobReport], float]:
     reports: list[JobReport] = []
     started = perf_counter()
-    for name in CORPUS:
+    for name in names:
         source = root / "corpus" / name
         out_dir = root / "reports" / stamp / name
         reports.append(run_migration(str(source), out_dir, limits=limits, llm=llm))

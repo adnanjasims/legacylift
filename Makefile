@@ -6,7 +6,14 @@ WEB := services/web
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev dev-infra down test lint typecheck eval fmt compose-config ci migrate-samples db-migrate e2e
+JAVA_M2 := $(CURDIR)/reports/m2
+JAVA8_IMAGE := maven:3.9-eclipse-temurin-8
+JAVA21_IMAGE := maven:3.9-eclipse-temurin-21
+REWRITE_PLUGIN := org.openrewrite.maven:rewrite-maven-plugin:6.46.1
+REWRITE_RECIPES := org.openrewrite.recipe:rewrite-migrate-java:3.42.1
+REWRITE_RECIPE := org.openrewrite.java.migrate.UpgradeToJava21
+
+.PHONY: help install dev dev-infra down test lint typecheck eval fmt compose-config ci migrate-samples db-migrate e2e java-deps _java-seed _java-seed-rewrite
 
 help:
 	@printf '%s\n' \
@@ -18,7 +25,8 @@ help:
 		'make lint           ruff, eslint, prettier, mypy, tsc, bandit' \
 		'make typecheck      mypy and tsc' \
 		'make eval           write docs/RESULTS.md from the eval harness' \
-		'make migrate-samples run the pipeline on the three py2 corpus trees' \
+		'make java-deps       seed reports/m2 for offline Maven + OpenRewrite' \
+		'make migrate-samples run the pipeline on the py2 and Java 8 corpus trees' \
 		'make db-migrate     apply Alembic migrations to DATABASE_URL' \
 		'make fmt            apply ruff and prettier' \
 		'make compose-config validate compose YAML' \
@@ -61,10 +69,40 @@ typecheck:
 eval:
 	$(UV) run python -m legacylift_eval.run
 
+java-deps:
+	mkdir -p "$(JAVA_M2)"
+	$(MAKE) _java-seed SAMPLE=corpus/java8_box IMAGE=$(JAVA8_IMAGE)
+	$(MAKE) _java-seed SAMPLE=corpus/java8_urlkit IMAGE=$(JAVA8_IMAGE)
+	$(MAKE) _java-seed-rewrite SAMPLE=corpus/java8_box
+	$(MAKE) _java-seed-rewrite SAMPLE=corpus/java8_urlkit
+	docker run --rm -v "$(JAVA_M2):/m2" $(JAVA21_IMAGE) chmod -R a+rX /m2
+
+_java-seed:
+	docker run --rm \
+		-v "$(JAVA_M2):/m2" \
+		-v "$(CURDIR)/$(SAMPLE):/src:ro" \
+		-w /tmp \
+		$(IMAGE) \
+		sh -c 'cp -a /src /tmp/work && cd /tmp/work && mvn -B -Dmaven.repo.local=/m2 test'
+
+_java-seed-rewrite:
+	docker run --rm \
+		-v "$(JAVA_M2):/m2" \
+		-v "$(CURDIR)/$(SAMPLE):/src:ro" \
+		-w /tmp \
+		$(JAVA21_IMAGE) \
+		sh -c 'cp -a /src /tmp/work && cd /tmp/work && mvn -B -Dmaven.repo.local=/m2 \
+			$(REWRITE_PLUGIN):run \
+			-Drewrite.recipeArtifactCoordinates=$(REWRITE_RECIPES) \
+			-Drewrite.activeRecipes=$(REWRITE_RECIPE) \
+			-Drewrite.pomCacheEnabled=false'
+
 migrate-samples:
 	$(UV) run python -m legacylift_worker.cli migrate corpus/py2_textkit --out reports/py2_textkit --timeout 120
 	$(UV) run python -m legacylift_worker.cli migrate corpus/py2_pricing --out reports/py2_pricing --timeout 120
 	$(UV) run python -m legacylift_worker.cli migrate corpus/py2_counts --out reports/py2_counts --timeout 120
+	$(UV) run python -m legacylift_worker.cli migrate corpus/java8_box --out reports/java8_box --timeout 300 --memory-mb 1536
+	$(UV) run python -m legacylift_worker.cli migrate corpus/java8_urlkit --out reports/java8_urlkit --timeout 300 --memory-mb 1536
 
 db-migrate:
 	$(UV) run alembic -c services/worker/alembic.ini upgrade head

@@ -45,6 +45,17 @@ jobs:
         run: |
           docker pull python:2.7.18-slim
           docker pull python:3.12-slim-bookworm
+          docker pull maven:3.9-eclipse-temurin-8
+          docker pull maven:3.9-eclipse-temurin-21
+
+      - name: Maven offline cache
+        uses: actions/cache@v4
+        with:
+          path: reports/m2
+          key: m2-or-6.46.1-rj-3.42.1-${{ hashFiles('corpus/java8_*/pom.xml') }}
+
+      - name: Seed Maven offline cache
+        run: make java-deps
 
       - name: Unit tests
         run: make test
@@ -76,6 +87,17 @@ jobs:
         run: |
           docker pull python:2.7.18-slim
           docker pull python:3.12-slim-bookworm
+          docker pull maven:3.9-eclipse-temurin-8
+          docker pull maven:3.9-eclipse-temurin-21
+
+      - name: Maven offline cache
+        uses: actions/cache@v4
+        with:
+          path: reports/m2
+          key: m2-or-6.46.1-rj-3.42.1-${{ hashFiles('corpus/java8_*/pom.xml') }}
+
+      - name: Seed Maven offline cache
+        run: make java-deps
 
       - name: Migrate corpus samples
         run: make migrate-samples

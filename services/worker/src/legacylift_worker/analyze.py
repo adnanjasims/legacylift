@@ -62,7 +62,9 @@ class Analysis:
 
 
 def analyze_tree(root: Path) -> Analysis:
-    """Scan Python files under root for migration risk markers."""
+    """Scan a Python 2 tree or a Maven Java tree."""
+    if (root / "pom.xml").is_file():
+        return _analyze_java(root)
     files: list[FileAnalysis] = []
     py2_hits = 0
     for path in sorted(root.rglob("*.py")):
@@ -83,6 +85,37 @@ def analyze_tree(root: Path) -> Analysis:
         )
     version = "2.7" if py2_hits else _ast_version_guess(files, root)
     return Analysis(language="python", version_guess=version, files=files)
+
+
+def _analyze_java(root: Path) -> Analysis:
+    files: list[FileAnalysis] = []
+    src = root / "src" / "main" / "java"
+    if not src.is_dir():
+        return Analysis(language="java", version_guess="8", files=files)
+    for path in sorted(src.rglob("*.java")):
+        rel = path.relative_to(root).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+        files.append(FileAnalysis(path=rel, findings=_java_findings(text)))
+    return Analysis(language="java", version_guess="8", files=files)
+
+
+def _java_findings(text: str) -> list[Finding]:
+    found: list[Finding] = []
+    markers = (
+        ("boxed_constructor", "new Integer("),
+        ("url_constructor", "new URL("),
+        ("thread_stop", ".stop()"),
+    )
+    for kind, needle in markers:
+        start = 0
+        while True:
+            idx = text.find(needle, start)
+            if idx < 0:
+                break
+            line = text[:idx].count("\n") + 1
+            found.append(Finding(kind=kind, line=line))
+            start = idx + len(needle)
+    return found
 
 
 def python_modules(root: Path) -> list[Path]:

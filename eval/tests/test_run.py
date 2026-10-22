@@ -1,10 +1,17 @@
 from pathlib import Path
 
-from legacylift_eval.metrics import EvalOutcome, ModeMetrics, aggregate, render_results
-from legacylift_eval.run import results_path
+from legacylift_eval.metrics import EvalOutcome, aggregate, render_results
+from legacylift_eval.run import CORPUS, CORPUS_JAVA, CORPUS_PYTHON, results_path
 from legacylift_worker.analyze import Analysis, FileAnalysis, Finding
 from legacylift_worker.characterize import SuiteRun
 from legacylift_worker.report import build_report
+
+
+def test_corpus_lists_python_and_java() -> None:
+    assert CORPUS == CORPUS_PYTHON + CORPUS_JAVA
+    assert "py2_pricing" in CORPUS_PYTHON
+    assert "java8_box" in CORPUS_JAVA
+    assert "java8_urlkit" in CORPUS
 
 
 def test_results_path_under_docs(tmp_path: Path) -> None:

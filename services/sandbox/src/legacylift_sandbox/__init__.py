@@ -7,6 +7,9 @@ from legacylift_sandbox.docker_backend import (
 )
 from legacylift_sandbox.models import (
     DEFAULT_LIMITS,
+    JAVA8_IMAGE,
+    JAVA21_IMAGE,
+    JAVA_LIMITS,
     PY2_IMAGE,
     PY3_IMAGE,
     SandboxLimits,
@@ -17,6 +20,9 @@ from legacylift_sandbox.models import (
 __all__ = [
     "DEFAULT_LIMITS",
     "DockerBackend",
+    "JAVA8_IMAGE",
+    "JAVA21_IMAGE",
+    "JAVA_LIMITS",
     "PY2_IMAGE",
     "PY3_IMAGE",
     "SandboxError",

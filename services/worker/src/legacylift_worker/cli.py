@@ -16,7 +16,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Return the migrate CLI parser."""
     parser = argparse.ArgumentParser(
         prog="legacylift",
-        description="Migrate a Python 2 tree with 2to3 and sandbox-checked tests.",
+        description="Migrate a Python 2 or Java 8 tree with sandbox-checked tests.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
     migrate = sub.add_parser("migrate", help="ingest, characterize, 2to3, verify")

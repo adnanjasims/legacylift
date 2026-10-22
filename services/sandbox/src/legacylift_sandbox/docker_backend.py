@@ -85,6 +85,10 @@ def docker_run_argv(request: SandboxRequest, container_name: str) -> list[str]:
     ]
     if request.platform:
         argv.extend(["--platform", request.platform])
+    for host, dest in request.extra_ro:
+        argv.extend(["-v", f"{host}:{dest}:ro"])
+    for host, dest in request.extra_rw:
+        argv.extend(["-v", f"{host}:{dest}"])
     for key, value in request.env.items():
         argv.extend(["-e", f"{key}={value}"])
     inner = (
