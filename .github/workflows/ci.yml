@@ -12,6 +12,7 @@ env:
   DOCKER_HOST: unix:///var/run/docker.sock
   MAVEN_REPO_LOCAL: ${{ github.workspace }}/reports/m2
   PYTHONUNBUFFERED: "1"
+  UV_PYTHON_PREFERENCE: only-managed
 
 jobs:
   lint-test:
@@ -34,6 +35,9 @@ jobs:
 
       - name: Install Python workspace
         run: uv sync --all-packages --group dev
+
+      - name: Check interpreter
+        run: .venv/bin/python -c "import sys, lib2to3; print(sys.version); print(sys.executable)"
 
       - name: Install gateway
         run: npm ci
@@ -103,6 +107,9 @@ jobs:
 
       - name: Install Python workspace
         run: uv sync --all-packages --group dev
+
+      - name: Check interpreter
+        run: .venv/bin/python -c "import sys, lib2to3; print(sys.version); print(sys.executable)"
 
       - name: Pull sandbox images
         run: |
