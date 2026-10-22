@@ -7,10 +7,12 @@ non-root user, and memory/cpu/pid caps.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess  # nosec B404
 import time
 import uuid
+from pathlib import Path
 from typing import Final
 
 from legacylift_sandbox.models import SandboxRequest, SandboxResult
@@ -18,6 +20,11 @@ from legacylift_sandbox.models import SandboxRequest, SandboxResult
 DOCKER_BIN: Final = "docker"
 SANDBOX_USER: Final = "65534:65534"
 MAX_OUTPUT_BYTES: Final = 1_000_000
+_DOCKER_CANDIDATES: Final = (
+    "/usr/bin/docker",
+    "/usr/local/bin/docker",
+    "/opt/homebrew/bin/docker",
+)
 
 
 class SandboxError(RuntimeError):
@@ -25,23 +32,53 @@ class SandboxError(RuntimeError):
 
 
 def docker_cli() -> str:
-    """Return the docker binary. CI runners sometimes omit it from PATH."""
-    return shutil.which(DOCKER_BIN) or "/usr/bin/docker"
+    """Return a docker binary that can talk to the daemon, if one exists."""
+    found = shutil.which(DOCKER_BIN)
+    for candidate in (found, *_DOCKER_CANDIDATES):
+        if candidate and _docker_talks(candidate):
+            return candidate
+    return found or "/usr/bin/docker"
 
 
 def docker_available() -> bool:
     """Return True when the docker CLI can talk to a daemon."""
-    try:
-        probe = subprocess.run(  # nosec B603
-            [docker_cli(), "info"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
+    return _docker_talks(docker_cli())
+
+
+def docker_subprocess_env() -> dict[str, str]:
+    """Keep DOCKER_HOST so uv-launched Python can reach the GHA socket."""
+    env = os.environ.copy()
+    socket = Path("/var/run/docker.sock")
+    if "DOCKER_HOST" not in env and socket.exists():
+        env["DOCKER_HOST"] = "unix:///var/run/docker.sock"
+    return env
+
+
+def _docker_talks(binary: str) -> bool:
+    if not binary:
         return False
-    return probe.returncode == 0
+    path = Path(binary)
+    if path.is_absolute() and not path.is_file():
+        return False
+    env = docker_subprocess_env()
+    for argv in (
+        [binary, "version", "--format", "{{.Server.Version}}"],
+        [binary, "info"],
+    ):
+        try:
+            probe = subprocess.run(  # nosec B603
+                argv,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+                env=env,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if probe.returncode == 0:
+            return True
+    return False
 
 
 def docker_run_argv(request: SandboxRequest, container_name: str) -> list[str]:
@@ -147,6 +184,7 @@ class DockerBackend:
                 text=True,
                 timeout=request.limits.timeout_sec,
                 check=False,
+                env=docker_subprocess_env(),
             )
             exit_code = completed.returncode
             stdout = _as_text(completed.stdout)
@@ -162,6 +200,7 @@ class DockerBackend:
                 text=True,
                 timeout=10,
                 check=False,
+                env=docker_subprocess_env(),
             )
         duration_ms = int((time.monotonic() - started) * 1000)
         return SandboxResult(

@@ -33,12 +33,23 @@ def is_maven_tree(root: Path) -> bool:
 
 def maven_repo() -> Path:
     raw = os.environ.get("MAVEN_REPO_LOCAL", "").strip()
-    path = Path(raw) if raw else Path(__file__).resolve().parents[4] / "reports" / "m2"
-    if not path.is_dir() or not any(path.iterdir()):
-        raise PipelineError(
-            "Maven local repo is empty. Run make java-deps so mvn can run offline."
-        )
-    return path.resolve()
+    if raw:
+        candidates = [Path(raw)]
+    else:
+        candidates = [Path.cwd() / "reports" / "m2"]
+        try:
+            candidates.append(Path(__file__).resolve().parents[4] / "reports" / "m2")
+        except IndexError:
+            pass
+    for path in candidates:
+        try:
+            if path.is_dir() and any(path.iterdir()):
+                return path.resolve()
+        except OSError:
+            continue
+    raise PipelineError(
+        "Maven local repo is empty. Run make java-deps so mvn can run offline."
+    )
 
 
 def maven_argv(*goals: str, copy_output: bool = False) -> list[str]:

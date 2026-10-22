@@ -7,6 +7,7 @@ WEB := services/web
 .DEFAULT_GOAL := help
 
 JAVA_M2 := $(CURDIR)/reports/m2
+export MAVEN_REPO_LOCAL := $(JAVA_M2)
 JAVA8_IMAGE := maven:3.9-eclipse-temurin-8
 JAVA21_IMAGE := maven:3.9-eclipse-temurin-21
 REWRITE_PLUGIN := org.openrewrite.maven:rewrite-maven-plugin:6.46.1

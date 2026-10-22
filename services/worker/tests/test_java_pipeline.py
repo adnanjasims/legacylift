@@ -11,11 +11,11 @@ _REPO = Path(__file__).resolve().parents[3]
 
 
 def _java_ready() -> bool:
-    if not docker_available():
-        return False
     try:
+        if not docker_available():
+            return False
         maven_repo()
-    except PipelineError:
+    except (PipelineError, OSError):
         return False
     return True
 

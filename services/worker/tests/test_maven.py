@@ -1,7 +1,10 @@
 from pathlib import Path
 
+import pytest
+
 from legacylift_worker.analyze import analyze_tree
-from legacylift_worker.maven import maven_argv, parse_surefire, rewrite_argv
+from legacylift_worker.errors import PipelineError
+from legacylift_worker.maven import maven_argv, maven_repo, parse_surefire, rewrite_argv
 from legacylift_worker.report import _module_from_test_id
 
 
@@ -58,6 +61,27 @@ def test_rewrite_argv_uses_central_pins() -> None:
     assert "UpgradeToJava21" in joined
     assert "-o" in argv
     assert "/output/" in joined
+
+
+def test_maven_repo_uses_MAVEN_REPO_LOCAL(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = tmp_path / "m2"
+    cache.mkdir()
+    (cache / "marker").write_text("ok", encoding="utf-8")
+    monkeypatch.setenv("MAVEN_REPO_LOCAL", str(cache))
+    assert maven_repo() == cache.resolve()
+
+
+def test_maven_repo_rejects_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    monkeypatch.setenv("MAVEN_REPO_LOCAL", str(empty))
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(PipelineError, match="java-deps"):
+        maven_repo()
 
 
 def test_maven_argv_copies_offline_cache() -> None:

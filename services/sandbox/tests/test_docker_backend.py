@@ -1,7 +1,13 @@
 from pathlib import Path
 
-from legacylift_sandbox.docker_backend import docker_run_argv
+from legacylift_sandbox.docker_backend import docker_cli, docker_run_argv
 from legacylift_sandbox.models import PY3_IMAGE, SandboxLimits, SandboxRequest
+
+
+def test_docker_cli_returns_a_binary_name() -> None:
+    binary = docker_cli()
+    assert binary
+    assert "docker" in Path(binary).name
 
 
 def test_docker_run_argv_includes_isolation_flags(tmp_path: Path) -> None:
